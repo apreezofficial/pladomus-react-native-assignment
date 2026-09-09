@@ -37,7 +37,14 @@ jobs:
       run: yes | sdkmanager --licenses || true
         
     - name: Install dependencies
-      run: npm install
+      run: |
+        rm -rf node_modules package-lock.json || true
+        npm install
+        
+    - name: Verify React Native setup
+      run: |
+        ls -la node_modules/@react-native/ || echo "React Native modules missing"
+        npm ls @react-native/gradle-plugin || echo "Gradle plugin missing"
       
     - name: Create Android assets directory
       run: mkdir -p android/app/src/main/assets
