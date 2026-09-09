@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #F0F2F8;
+            line-height: 1.4;
+        }
+        .phone-frame { 
+            max-width: 375px; 
+            margin: 20px auto; 
+            background: white; 
+            border-radius: 20px; 
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+        .header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 16px 20px 12px; 
+            background: white;
+            border-bottom: 1px solid #E8EAF0;
+        }
+        .header h1 { 
+            font-size: 22px; 
+            font-weight: 700; 
+            color: #1A1A2E; 
+        }
+        .add-btn { 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 18px; 
+            background: #3D5AFE; 
+            color: white; 
+            border: none; 
+            font-size: 22px; 
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .city-list { 
+            background: white; 
+            margin: 16px; 
+            border-radius: 16px; 
+            overflow: hidden;
+        }
+        .city-row { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 14px 16px; 
+            border-bottom: 1px solid #F0F2F8;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .city-row:hover { background: #FAFAFA; }
+        .city-row:last-child { border-bottom: none; }
+        .city-left { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .dot { 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 50%; 
+        }
+        .city-name { 
+            font-size: 16px; 
+            font-weight: 600; 
+            color: #1A1A2E; 
+        }
+        .city-temp { 
+            font-size: 15px; 
+            color: #E07B39; 
+            font-weight: 500; 
+        }
+        .weather-detail { 
+            text-align: center; 
+            padding: 48px 24px; 
+        }
+        .weather-icon { 
+            width: 100px; 
+            height: 100px; 
+            border-radius: 50%; 
+            margin: 0 auto 16px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .temperature { 
+            font-size: 56px; 
+            font-weight: 700; 
+            color: #1A1A2E; 
+            margin-bottom: 12px;
+        }
+        .condition { 
+            font-size: 16px; 
+            color: #666; 
+            margin-bottom: 24px;
+        }
+        .tiles { 
+            display: flex; 
+            gap: 16px; 
+        }
+        .tile { 
+            flex: 1; 
+            background: #EEF1FB; 
+            border-radius: 16px; 
+            padding: 18px; 
+            text-align: center;
+        }
+        .tile-value { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: #1A1A2E; 
+            margin-bottom: 4px;
+        }
+        .tile-label { 
+            font-size: 13px; 
+            color: #888; 
+            font-weight: 500;
+        }
+        .back-btn { 
+            background: none; 
+            border: none; 
+            font-size: 20px; 
+            color: #E07B39; 
+            cursor: pointer; 
+            font-weight: 600;
+        }
+        .unit-btn { 
+            background: none; 
+            border: none; 
+            font-size: 16px; 
+            color: #3D5AFE; 
+            cursor: pointer; 
+            font-weight: 600;
+        }
+        .form { 
+            padding: 20px; 
+        }
+        .form h2 { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: #1A1A2E; 
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-group { 
+            margin-bottom: 16px; 
+        }
+        .label { 
+            font-size: 13px; 
+            color: #E07B39; 
+            font-weight: 600; 
+            margin-bottom: 6px; 
+            display: block;
+        }
+        .input { 
+            width: 100%; 
+            border: 1px solid #E0E0E0; 
+            border-radius: 10px; 
+            padding: 12px 14px; 
+            font-size: 16px; 
+            color: #1A1A2E; 
+            background: #FAFAFA;
+        }
+        .btn { 
+            width: 100%; 
+            background: #3D5AFE; 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            padding: 14px; 
+            font-size: 16px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-bottom: 20px;
+        }
+        .btn-outline { 
+            background: white; 
+            color: #1A1A2E; 
+            border: 1.5px solid #E0E0E0; 
+            font-weight: 600;
+        }
+        .or { 
+            text-align: center; 
+            color: #999; 
+            margin: 20px 0; 
+            position: relative;
+        }
+        .or::before, .or::after { 
+            content: ''; 
+            position: absolute; 
+            top: 50%; 
+            width: 40%; 
+            height: 1px; 
+            background: #E0E0E0;
+        }
+        .or::before { left: 0; }
+        .or::after { right: 0; }
+        .loading { 
+            text-align: center; 
+            padding: 40px; 
+            color: #888;
+        }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .nav-controls { 
+            position: fixed; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            display: flex; 
+            gap: 10px; 
+            background: white; 
+            padding: 10px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .nav-controls button { 
+            padding: 8px 16px; 
+            border: 1px solid #ddd; 
+            background: white; 
+            border-radius: 6px; 
+            cursor: pointer;
+        }
+        .nav-controls button.active { 
+            background: #3D5AFE; 
+            color: white; 
+            border-color: #3D5AFE;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <!-- Saved Cities Screen -->
+        <div id="saved-cities" class="screen active">
+            <div class="header">
+                <h1>Saved cities</h1>
+                <button class="add-btn" onclick="showScreen('add-city')">+</button>
+            </div>
+            <div class="city-list">
+                <div class="city-row" onclick="showWeather('Lisbon', 72, '#F5A623')">
+                    <div class="city-left">
+                        <div class="dot" style="background-color: #F5A623;"></div>
+                        <div class="city-name">Lisbon</div>
+                    </div>
+                    <div class="city-temp">72°F</div>
+                </div>
+                <div class="city-row" onclick="showWeather('Tokyo', 64, '#9B9B9B')">
+                    <div class="city-left">
+                        <div class="dot" style="background-color: #9B9B9B;"></div>
+                        <div class="city-name">Tokyo</div>
+                    </div>
+                    <div class="city-temp">64°F</div>
+                </div>
+                <div class="city-row" onclick="showWeather('Austin', 81, '#4A90E2')">
+                    <div class="city-left">
+                        <div class="dot" style="background-color: #4A90E2;"></div>
+                        <div class="city-name">Austin</div>
+                    </div>
+                    <div class="city-temp">81°F</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add City Screen -->
+        <div id="add-city" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showScreen('saved-cities')">←</button>
+                <h1>Add city</h1>
+                <div></div>
+            </div>
+            <div class="form">
+                <div class="input-group">
+                    <label class="label">City name</label>
+                    <input class="input" placeholder="e.g. Lisbon" id="city-input">
+                </div>
+                <button class="btn" onclick="addCity()">Add city</button>
+                <div class="or">or</div>
+                <button class="btn btn-outline" onclick="useLocation()">Use my current location</button>
+            </div>
+        </div>
+
+        <!-- Weather Detail Screen -->
+        <div id="weather-detail" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showScreen('saved-cities')">←</button>
+                <h1 id="weather-city">Lisbon</h1>
+                <button class="unit-btn" onclick="toggleUnit()">°C</button>
+            </div>
+            <div class="weather-detail">
+                <div id="weather-icon" class="weather-icon" style="background-color: #F5A623;"></div>
+                <div id="weather-temp" class="temperature">72°F</div>
+                <div class="condition">Sunny, feels like 75°</div>
+                <div class="tiles">
+                    <div class="tile">
+                        <div class="tile-value">58%</div>
+                        <div class="tile-label">Humidity</div>
+                    </div>
+                    <div class="tile">
+                        <div class="tile-value">8 mph</div>
+                        <div class="tile-label">Wind</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Navigation -->
+    <div class="nav-controls">
+        <button onclick="showScreen('saved-cities')" class="active" id="nav-cities">Cities</button>
+        <button onclick="showScreen('add-city')" id="nav-add">Add City</button>
+        <button onclick="showScreen('weather-detail')" id="nav-weather">Weather</button>
+    </div>
+
+    <script>
+        let currentUnit = 'F';
+        let currentScreen = 'saved-cities';
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            document.querySelectorAll('.nav-controls button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`nav-${screenId.split('-')[0]}`).classList.add('active');
+            
+            currentScreen = screenId;
+        }
+
+        function showWeather(city, temp, color) {
+            document.getElementById('weather-city').textContent = city;
+            document.getElementById('weather-temp').textContent = temp + '°' + currentUnit;
+            document.getElementById('weather-icon').style.backgroundColor = color;
+            showScreen('weather-detail');
+        }
+
+        function toggleUnit() {
+            const tempEl = document.getElementById('weather-temp');
+            const unitBtn = document.querySelector('.unit-btn');
+            const currentTemp = parseInt(tempEl.textContent);
+            
+            if (currentUnit === 'F') {
+                const celsius = Math.round((currentTemp - 32) * 5/9);
+                tempEl.textContent = celsius + '°C';
+                unitBtn.textContent = '°F';
+                currentUnit = 'C';
+                
+                // Update city temps
+                document.querySelectorAll('.city-temp').forEach(el => {
+                    const temp = parseInt(el.textContent);
+                    el.textContent = Math.round((temp - 32) * 5/9) + '°C';
+                });
+            } else {
+                const fahrenheit = Math.round(currentTemp * 9/5 + 32);
+                tempEl.textContent = fahrenheit + '°F';
+                unitBtn.textContent = '°C';
+                currentUnit = 'F';
+                
+                // Update city temps
+                document.querySelectorAll('.city-temp').forEach(el => {
+                    const temp = parseInt(el.textContent);
+                    el.textContent = Math.round(temp * 9/5 + 32) + '°F';
+                });
+            }
+        }
+
+        function addCity() {
+            const input = document.getElementById('city-input');
+            const city = input.value.trim();
+            
+            if (!city) {
+                alert('Enter a city name');
+                return;
+            }
+
+            // Simulate adding city
+            const colors = ['#50C878', '#9B59B6', '#FF6B6B', '#4ECDC4'];
+            const temps = [68, 73, 79, 82];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const temp = temps[Math.floor(Math.random() * temps.length)];
+
+            const cityList = document.querySelector('.city-list');
+            const newRow = document.createElement('div');
+            newRow.className = 'city-row';
+            newRow.onclick = () => showWeather(city, temp, color);
+            newRow.innerHTML = `
+                <div class="city-left">
+                    <div class="dot" style="background-color: ${color};"></div>
+                    <div class="city-name">${city}</div>
+                </div>
+                <div class="city-temp">${temp}°${currentUnit}</div>
+            `;
+            cityList.appendChild(newRow);
+
+            input.value = '';
+            showScreen('saved-cities');
+        }
+
+        function useLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    showWeather('My Location', 75, '#4A90E2');
+                }, error => {
+                    alert('Location access denied');
+                });
+            } else {
+                alert('Geolocation not supported');
+            }
+        }
+
+        // Allow Enter key to add city
+        document.getElementById('city-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addCity();
+        });
+    </script>
+</body>
+</html>

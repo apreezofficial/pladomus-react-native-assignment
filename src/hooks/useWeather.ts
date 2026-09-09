@@ -10,8 +10,8 @@ interface UseWeatherResult {
 }
 
 export function useWeather(
-  latitude: number | null,
-  longitude: number | null,
+  _latitude: number | null,
+  _longitude: number | null,
 ): UseWeatherResult {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);

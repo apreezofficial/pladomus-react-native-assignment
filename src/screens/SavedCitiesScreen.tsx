@@ -25,6 +25,9 @@ interface CityWithTemp extends City {
   temperature: number | null;
 }
 
+// Move separator component outside render to avoid re-creation
+const ItemSeparator = () => <View style={styles.separator} />;
+
 export function SavedCitiesScreen() {
   const navigation = useNavigation<Nav>();
   const { cities, loading, removeCity, reload } = useCities();
@@ -157,7 +160,7 @@ export function SavedCitiesScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={ItemSeparator}
         />
       )}
     </View>
