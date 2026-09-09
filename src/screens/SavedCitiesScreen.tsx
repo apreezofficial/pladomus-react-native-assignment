@@ -123,16 +123,6 @@ export function SavedCitiesScreen() {
   const [temps, setTemps] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
-  const headerAnim = new Animated.Value(0);
-
-  // Animate header on mount
-  useEffect(() => {
-    Animated.timing(headerAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, []);
 
   // Reload list whenever screen comes into focus (after adding a city)
   useFocusEffect(
@@ -193,19 +183,12 @@ export function SavedCitiesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Animated Header */}
-      <Animated.View 
+      <View 
         style={[
           styles.header,
           {
             backgroundColor: theme.colors.surface,
             borderBottomColor: theme.colors.border,
-            opacity: headerAnim,
-            transform: [{
-              translateY: headerAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-50, 0],
-              })
-            }]
           }
         ]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Saved cities</Text>
@@ -234,7 +217,6 @@ export function SavedCitiesScreen() {
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
 
       <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
