@@ -211,7 +211,7 @@ export function SavedCitiesScreen() {
         <Text style={[styles.title, { color: theme.colors.text }]}>Saved cities</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.themeBtn]}
+            style={[styles.themeBtn, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]}
             onPress={toggleTheme}
             activeOpacity={0.8}>
             <Text style={[styles.themeBtnText, { color: theme.colors.text }]}>
@@ -242,8 +242,14 @@ export function SavedCitiesScreen() {
         <ActivityIndicator style={styles.loader} color={theme.colors.primary} />
       ) : cities.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No cities saved yet.</Text>
-          <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>Tap + to add your first city.</Text>
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No cities saved yet</Text>
+          <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>Tap the + button above to add your first city</Text>
+          <TouchableOpacity
+            style={[styles.emptyAddBtn, { backgroundColor: theme.colors.primary }]}
+            onPress={() => navigation.navigate('AddCity')}
+            activeOpacity={0.8}>
+            <Text style={styles.emptyAddBtnText}>+ Add City</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={[styles.list, { backgroundColor: theme.colors.card }]}>
@@ -327,17 +333,22 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   addBtnText: {
     color: '#FFFFFF',
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: '400',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '700',
   },
   divider: {
     height: 1,
@@ -349,14 +360,34 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 12,
+    paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
   },
   emptySubText: {
-    fontSize: 14,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyAddBtn: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyAddBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   list: {
     marginTop: 16,
