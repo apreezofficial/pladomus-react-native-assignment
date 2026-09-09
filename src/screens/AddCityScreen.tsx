@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   PermissionsAndroid,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -44,6 +45,25 @@ export function AddCityScreen() {
   const [cityInput, setCityInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [locating, setLocating] = useState(false);
+  
+  // Animation values
+  const fadeAnim = new Animated.Value(0);
+  const slideAnim = new Animated.Value(30);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleAddCity = async () => {
     const trimmed = cityInput.trim();
@@ -98,13 +118,21 @@ export function AddCityScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.card}>
+      <Animated.View 
+        style={[
+          styles.card,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}>
         {/* Title row */}
         <View style={styles.titleRow}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
-            style={styles.backBtn}>
+            style={styles.backBtn}
+            activeOpacity={0.8}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Add city</Text>
@@ -134,7 +162,8 @@ export function AddCityScreen() {
           style={[styles.addBtn, (adding || locating) && styles.btnDisabled]}
           onPress={handleAddCity}
           disabled={adding || locating}
-          accessibilityLabel="Add city">
+          accessibilityLabel="Add city"
+          activeOpacity={0.8}>
           {adding ? (
             <ActivityIndicator color="#FFF" />
           ) : (
@@ -154,14 +183,15 @@ export function AddCityScreen() {
           style={[styles.locationBtn, (adding || locating) && styles.btnDisabled]}
           onPress={handleUseLocation}
           disabled={adding || locating}
-          accessibilityLabel="Use my current location">
+          accessibilityLabel="Use my current location"
+          activeOpacity={0.8}>
           {locating ? (
             <ActivityIndicator color="#3D5AFE" />
           ) : (
             <Text style={styles.locationBtnText}>Use my current location</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }

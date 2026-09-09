@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -19,19 +19,43 @@ export default function App() {
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor="#FFFFFF"
+        translucent={false}
       />
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,    // all screens have custom headers
-            animation: 'slide_from_right',
-            contentStyle: { backgroundColor: '#F0F2F8' },
-          }}>
-          <Stack.Screen name="SavedCities" component={SavedCitiesScreen} />
-          <Stack.Screen name="AddCity" component={AddCityScreen} />
-          <Stack.Screen name="WeatherDetail" component={WeatherDetailScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F2F8' }}>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              animationDuration: 300,
+              contentStyle: { backgroundColor: '#F0F2F8' },
+            }}>
+            <Stack.Screen 
+              name="SavedCities" 
+              component={SavedCitiesScreen}
+              options={{
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen 
+              name="AddCity" 
+              component={AddCityScreen}
+              options={{
+                animation: 'slide_from_right',
+                animationDuration: 250,
+              }}
+            />
+            <Stack.Screen 
+              name="WeatherDetail" 
+              component={WeatherDetailScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                animationDuration: 300,
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }

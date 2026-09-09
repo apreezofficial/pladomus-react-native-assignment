@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Platform,
   PermissionsAndroid,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -52,6 +53,11 @@ export function WeatherDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
+  // Animation values
+  const fadeAnim = new Animated.Value(0);
+  const scaleAnim = new Animated.Value(0.8);
+  const slideAnim = new Animated.Value(50);
+
   const acquireCoords = useCallback(async () => {
     if (city) {
       setCoords({ lat: city.latitude, lon: city.longitude });
@@ -94,6 +100,24 @@ export function WeatherDetailScreen() {
   useEffect(() => {
     if (coords) {
       refresh(coords.lat, coords.lon);
+      // Animate weather content when data loads
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [coords, refresh]);
 
@@ -149,18 +173,44 @@ export function WeatherDetailScreen() {
       : `${weather.feelsLike}°`;
 
     return (
-      <View style={styles.weatherContent}>
-        <WeatherIcon conditionCode={weather.conditionCode} size={100} />
+      <Animated.View 
+        style={[
+          styles.weatherContent,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { scale: scaleAnim },
+              { translateY: slideAnim }
+            ],
+          }
+        ]}>
+        <Animated.View
+          style={{
+            transform: [{ scale: scaleAnim }],
+          }}>
+          <WeatherIcon conditionCode={weather.conditionCode} size={100} />
+        </Animated.View>
 
-        <Text style={styles.temperature}>
+        <Animated.Text 
+          style={[
+            styles.temperature,
+            { opacity: fadeAnim }
+          ]}>
           {formatTemp(weather.temperature, unit)}
-        </Text>
+        </Animated.Text>
 
         <Text style={styles.condition}>
           {weather.condition}, feels like {feelsStr}
         </Text>
 
-        <View style={styles.tiles}>
+        <Animated.View 
+          style={[
+            styles.tiles,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }
+          ]}>
           <View style={styles.tile}>
             <Text style={styles.tileValue}>{weather.humidity}%</Text>
             <Text style={styles.tileLabel}>Humidity</Text>
@@ -169,8 +219,8 @@ export function WeatherDetailScreen() {
             <Text style={styles.tileValue}>{weather.windSpeed} mph</Text>
             <Text style={styles.tileLabel}>Wind</Text>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     );
   };
 

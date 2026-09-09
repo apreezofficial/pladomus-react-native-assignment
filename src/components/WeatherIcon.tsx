@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
 
 interface Props {
   conditionCode: number;
@@ -19,12 +19,41 @@ function getIconColor(code: number): string {
 
 export function WeatherIcon({ conditionCode, size = 80 }: Props) {
   const color = getIconColor(conditionCode);
+  const pulseAnim = new Animated.Value(1);
+
+  useEffect(() => {
+    const pulse = () => {
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Repeat the animation
+        setTimeout(pulse, 2000);
+      });
+    };
+    
+    pulse();
+  }, []);
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.circle,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+        { 
+          width: size, 
+          height: size, 
+          borderRadius: size / 2, 
+          backgroundColor: color,
+          transform: [{ scale: pulseAnim }],
+        },
       ]}
     />
   );

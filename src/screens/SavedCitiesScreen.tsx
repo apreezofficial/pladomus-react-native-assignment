@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +29,75 @@ interface CityWithTemp extends City {
 // Move separator component outside render to avoid re-creation
 const ItemSeparator = () => <View style={styles.separator} />;
 
+// Animated City Row Component
+const AnimatedCityRow = ({ 
+  item, 
+  index, 
+  onPress, 
+  onLongPress, 
+  temperature,
+  unit 
+}: {
+  item: CityWithTemp;
+  index: number;
+  onPress: () => void;
+  onLongPress: () => void;
+  temperature: number | null;
+  unit: 'C' | 'F';
+}) => {
+  const fadeAnim = new Animated.Value(0);
+  const slideAnim = new Animated.Value(50);
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100, // Stagger animation
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateX: slideAnim }],
+      }}>
+      <TouchableOpacity
+        style={styles.cityRow}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        activeOpacity={0.8}
+        accessibilityLabel={`View weather for ${item.name}`}
+        accessibilityHint="Long press to remove">
+        <View style={styles.cityLeft}>
+          <Animated.View
+            style={[
+              styles.dot,
+              { 
+                backgroundColor: DOT_COLORS[index % DOT_COLORS.length],
+                transform: [{ scale: fadeAnim }],
+              },
+            ]}
+          />
+          <Text style={styles.cityName}>{item.name}</Text>
+        </View>
+        <Text style={styles.cityTemp}>
+          {temperature !== null ? formatTemp(temperature, unit) : '…'}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export function SavedCitiesScreen() {
   const navigation = useNavigation<Nav>();
   const { cities, loading, removeCity, reload } = useCities();
@@ -35,6 +105,16 @@ export function SavedCitiesScreen() {
   const [temps, setTemps] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
+  const headerAnim = new Animated.Value(0);
+
+  // Animate header on mount
+  useEffect(() => {
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   // Reload list whenever screen comes into focus (after adding a city)
   useFocusEffect(
@@ -94,13 +174,26 @@ export function SavedCitiesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Animated Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: headerAnim,
+            transform: [{
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-50, 0],
+              })
+            }]
+          }
+        ]}>
         <Text style={styles.title}>Saved cities</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={[styles.sortBtn, sortByTemp && styles.sortBtnActive]}
-            onPress={() => setSortByTemp(v => !v)}>
+            onPress={() => setSortByTemp(v => !v)}
+            activeOpacity={0.8}>
             <Text style={[styles.sortBtnText, sortByTemp && styles.sortBtnTextActive]}>
               {sortByTemp ? '↕ Temp' : '↕ Sort'}
             </Text>
@@ -108,11 +201,12 @@ export function SavedCitiesScreen() {
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => navigation.navigate('AddCity')}
-            accessibilityLabel="Add city">
+            accessibilityLabel="Add city"
+            activeOpacity={0.8}>
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       <View style={styles.divider} />
 
@@ -136,29 +230,14 @@ export function SavedCitiesScreen() {
             />
           }
           renderItem={({ item, index }) => (
-            <TouchableOpacity
-              style={styles.cityRow}
+            <AnimatedCityRow
+              item={item}
+              index={index}
               onPress={() => navigation.navigate('WeatherDetail', { city: item })}
               onLongPress={() => handleDelete(item)}
-              accessibilityLabel={`View weather for ${item.name}`}
-              accessibilityHint="Long press to remove">
-              <View style={styles.cityLeft}>
-                <View
-                  style={[
-                    styles.dot,
-                    { backgroundColor: DOT_COLORS[index % DOT_COLORS.length] },
-                  ]}
-                />
-                <Text style={styles.cityName}>{item.name}</Text>
-              </View>
-              <Text style={styles.cityTemp}>
-                {item.id in temps
-                  ? temps[item.id] !== null
-                    ? formatTemp(temps[item.id]!, unit)
-                    : '—'
-                  : '…'}
-              </Text>
-            </TouchableOpacity>
+              temperature={temps[item.id] ?? null}
+              unit={unit}
+            />
           )}
           ItemSeparatorComponent={ItemSeparator}
         />
