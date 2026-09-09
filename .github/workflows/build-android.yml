@@ -37,19 +37,29 @@ jobs:
       run: yes | sdkmanager --licenses || true
         
     - name: Install dependencies
-      run: npm install
+      run: npm ci
+      
+    - name: Clear Metro cache
+      run: npx react-native start --reset-cache --no-interactive &
+      
+    - name: Wait and stop Metro
+      run: |
+        sleep 10
+        pkill -f "react-native start" || true
       
     - name: Create Android assets directory
       run: mkdir -p android/app/src/main/assets
       
     - name: Bundle React Native
       run: |
+        mkdir -p android/app/src/main/assets
         npx react-native bundle \
           --platform android \
           --dev false \
           --entry-file index.js \
           --bundle-output android/app/src/main/assets/index.android.bundle \
-          --assets-dest android/app/src/main/res/
+          --assets-dest android/app/src/main/res/ \
+          --reset-cache
           
     - name: Make gradlew executable
       run: chmod +x android/gradlew
