@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import LottieView from 'lottie-react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 
 interface Props {
@@ -13,11 +12,10 @@ export function LoadingAnimation({ message = 'Loading weather…', size = 60 }: 
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <LottieView
-        source={require('../assets/lottie/loading.json')}
-        autoPlay={true}
-        loop={true}
-        style={{ width: size, height: size }}
+      <ActivityIndicator 
+        size="large" 
+        color={theme.colors.primary} 
+        style={{ transform: [{ scale: size / 40 }] }}
       />
       <Text style={[styles.message, { color: theme.colors.textSecondary }]}>
         {message}

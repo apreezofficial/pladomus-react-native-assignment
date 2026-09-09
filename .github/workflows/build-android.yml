@@ -28,6 +28,13 @@ jobs:
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        api-level: 33
+        target: google_apis
+        arch: x86_64
+        
+    - name: Accept Android SDK licenses
+      run: yes | sdkmanager --licenses || true
         
     - name: Install dependencies
       run: npm install
