@@ -3,6 +3,7 @@ import { City, TemperatureUnit } from '../types';
 
 const CITIES_KEY = '@weather_app/cities';
 const UNIT_KEY = '@weather_app/unit';
+const CURRENT_LOCATION_KEY = '@weather_app/current_location';
 
 export async function loadCities(): Promise<City[]> {
   try {
@@ -46,4 +47,51 @@ export async function loadUnit(): Promise<TemperatureUnit> {
 
 export async function saveUnit(unit: TemperatureUnit): Promise<void> {
   await AsyncStorage.setItem(UNIT_KEY, unit);
+}
+
+// Current location functions
+export async function saveCurrentLocation(latitude: number, longitude: number, name?: string): Promise<City> {
+  const locationCity: City = {
+    id: 'current_location',
+    name: name || 'My Location',
+    latitude,
+    longitude,
+    isCurrentLocation: true,
+  };
+  
+  await AsyncStorage.setItem(CURRENT_LOCATION_KEY, JSON.stringify(locationCity));
+  
+  // Also add to cities list if not already there
+  const cities = await loadCities();
+  const existingIndex = cities.findIndex(c => c.isCurrentLocation);
+  
+  let updated: City[];
+  if (existingIndex >= 0) {
+    // Update existing current location
+    updated = [...cities];
+    updated[existingIndex] = locationCity;
+  } else {
+    // Add as first city
+    updated = [locationCity, ...cities];
+  }
+  
+  await saveCities(updated);
+  return locationCity;
+}
+
+export async function loadCurrentLocation(): Promise<City | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CURRENT_LOCATION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function removeCurrentLocation(): Promise<City[]> {
+  await AsyncStorage.removeItem(CURRENT_LOCATION_KEY);
+  const cities = await loadCities();
+  const updated = cities.filter(c => !c.isCurrentLocation);
+  await saveCities(updated);
+  return updated;
 }

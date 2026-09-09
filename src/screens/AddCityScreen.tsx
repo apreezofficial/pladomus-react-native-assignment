@@ -18,6 +18,9 @@ import Geolocation from 'react-native-geolocation-service';
 import { RootStackParamList } from '../types';
 import { geocodeCity } from '../services/weatherService';
 import { useCities } from '../hooks/useCities';
+import { useTheme } from '../hooks/useTheme';
+import { saveCurrentLocation } from '../services/storageService';
+import { Icon } from '../components/Icon';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'AddCity'>;
 
@@ -41,7 +44,8 @@ async function requestLocationPermission(): Promise<boolean> {
 
 export function AddCityScreen() {
   const navigation = useNavigation<Nav>();
-  const { addCity } = useCities();
+  const { addCity, reload } = useCities();
+  const { theme } = useTheme();
   const [cityInput, setCityInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -106,7 +110,22 @@ export function AddCityScreen() {
         );
         return;
       }
-      navigation.navigate('WeatherDetail', { useCurrentLocation: true });
+
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Save current location as a city
+          await saveCurrentLocation(latitude, longitude, 'My Location');
+          await reload(); // Refresh the cities list
+          
+          navigation.navigate('WeatherDetail', { useCurrentLocation: true });
+        },
+        (error) => {
+          Alert.alert('Location error', error.message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
     } catch (e: any) {
       Alert.alert('Location error', e?.message ?? 'Could not access location.');
     } finally {
@@ -116,37 +135,41 @@ export function AddCityScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Animated.View 
         style={[
           styles.card,
+          { backgroundColor: theme.colors.card },
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           }
         ]}>
-        {/* Title row */}
-        <View style={styles.titleRow}>
+        <View style={[styles.titleRow, { borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
             style={styles.backBtn}
             activeOpacity={0.8}>
-            <Text style={styles.backArrow}>←</Text>
+            <Icon name="back" size={20} color={theme.colors.accent} />
           </TouchableOpacity>
-          <Text style={styles.title}>Add city</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Add city</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
         {/* City name input */}
         <View style={styles.inputSection}>
-          <Text style={styles.label}>City name</Text>
+          <Text style={[styles.label, { color: theme.colors.accent }]}>City name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              borderColor: theme.colors.border, 
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.text 
+            }]}
             placeholder="e.g. Lisbon"
-            placeholderTextColor="#BBBBBB"
+            placeholderTextColor={theme.colors.textSecondary}
             value={cityInput}
             onChangeText={setCityInput}
             onSubmitEditing={handleAddCity}
@@ -159,7 +182,11 @@ export function AddCityScreen() {
 
         {/* Add city button */}
         <TouchableOpacity
-          style={[styles.addBtn, (adding || locating) && styles.btnDisabled]}
+          style={[
+            styles.addBtn, 
+            { backgroundColor: theme.colors.primary }, 
+            (adding || locating) && styles.btnDisabled
+          ]}
           onPress={handleAddCity}
           disabled={adding || locating}
           accessibilityLabel="Add city"
@@ -167,28 +194,38 @@ export function AddCityScreen() {
           {adding ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.addBtnText}>Add city</Text>
+            <>
+              <Icon name="add" size={16} color="#FFF" />
+              <Text style={styles.addBtnText}>Add city</Text>
+            </>
           )}
         </TouchableOpacity>
 
         {/* Divider with "or" */}
         <View style={styles.orRow}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>or</Text>
-          <View style={styles.orLine} />
+          <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
+          <Text style={[styles.orText, { color: theme.colors.textSecondary }]}>or</Text>
+          <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
         </View>
 
         {/* Use my location button */}
         <TouchableOpacity
-          style={[styles.locationBtn, (adding || locating) && styles.btnDisabled]}
+          style={[
+            styles.locationBtn, 
+            { borderColor: theme.colors.border }, 
+            (adding || locating) && styles.btnDisabled
+          ]}
           onPress={handleUseLocation}
           disabled={adding || locating}
           accessibilityLabel="Use my current location"
           activeOpacity={0.8}>
           {locating ? (
-            <ActivityIndicator color="#3D5AFE" />
+            <ActivityIndicator color={theme.colors.primary} />
           ) : (
-            <Text style={styles.locationBtnText}>Use my current location</Text>
+            <>
+              <Icon name="location" size={16} color={theme.colors.primary} />
+              <Text style={[styles.locationBtnText, { color: theme.colors.text }]}>Use my current location</Text>
+            </>
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -199,13 +236,11 @@ export function AddCityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F2F8',
     justifyContent: 'flex-start',
     paddingTop: 20,
     paddingHorizontal: 16,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
@@ -223,19 +258,12 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 4,
   },
-  backArrow: {
-    fontSize: 20,
-    color: '#E07B39',
-    fontWeight: '600',
-  },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A2E',
   },
   divider: {
     height: 1,
-    backgroundColor: '#F0F2F8',
     marginBottom: 20,
   },
   inputSection: {
@@ -243,25 +271,23 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: '#E07B39',
     fontWeight: '600',
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1A1A2E',
-    backgroundColor: '#FAFAFA',
   },
   addBtn: {
-    backgroundColor: '#3D5AFE',
-    borderRadius: 10,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
     marginBottom: 20,
   },
   addBtnText: {
@@ -281,21 +307,20 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0',
   },
   orText: {
-    color: '#999',
     fontSize: 13,
   },
   locationBtn: {
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 14,
   },
   locationBtnText: {
-    color: '#1A1A2E',
     fontSize: 16,
     fontWeight: '600',
   },

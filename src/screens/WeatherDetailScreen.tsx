@@ -19,6 +19,10 @@ import { useWeather } from '../hooks/useWeather';
 import { useUnit } from '../hooks/useUnit';
 import { formatTemp } from '../services/weatherService';
 import { WeatherIcon } from '../components/WeatherIcon';
+import { LottieWeatherIcon } from '../components/LottieWeatherIcon';
+import { LoadingAnimation } from '../components/LoadingAnimation';
+import { Icon } from '../components/Icon';
+import { useTheme } from '../hooks/useTheme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'WeatherDetail'>;
 type Route = RouteProp<RootStackParamList, 'WeatherDetail'>;
@@ -47,6 +51,7 @@ export function WeatherDetailScreen() {
 
   const { unit, toggleUnit } = useUnit();
   const { weather, loading, error, refresh } = useWeather(null, null);
+  const { theme } = useTheme();
 
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [locationName, setLocationName] = useState<string>(city?.name ?? 'My Location');
@@ -144,21 +149,18 @@ export function WeatherDetailScreen() {
     }
 
     if (loading || (!weather && !error)) {
-      return (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#3D5AFE" />
-          <Text style={styles.loadingText}>Loading weather…</Text>
-        </View>
-      );
+      return <LoadingAnimation message="Loading weather data…" />;
     }
 
     if (error) {
       return (
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
+          <Icon name="error" size={60} color={theme.colors.accent} />
+          <Text style={[styles.errorText, { color: theme.colors.text }]}>{error}</Text>
           <TouchableOpacity
-            style={styles.retryBtn}
+            style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]}
             onPress={() => coords && refresh(coords.lat, coords.lon)}>
+            <Icon name="refresh" size={16} color="#FFF" />
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -188,18 +190,21 @@ export function WeatherDetailScreen() {
           style={{
             transform: [{ scale: scaleAnim }],
           }}>
-          <WeatherIcon conditionCode={weather.conditionCode} size={100} />
+          <LottieWeatherIcon conditionCode={weather.conditionCode} size={120} />
         </Animated.View>
 
         <Animated.Text 
           style={[
             styles.temperature,
-            { opacity: fadeAnim }
+            { 
+              opacity: fadeAnim,
+              color: theme.colors.text,
+            }
           ]}>
           {formatTemp(weather.temperature, unit)}
         </Animated.Text>
 
-        <Text style={styles.condition}>
+        <Text style={[styles.condition, { color: theme.colors.textSecondary }]}>
           {weather.condition}, feels like {feelsStr}
         </Text>
 
@@ -211,13 +216,15 @@ export function WeatherDetailScreen() {
               transform: [{ translateY: slideAnim }],
             }
           ]}>
-          <View style={styles.tile}>
-            <Text style={styles.tileValue}>{weather.humidity}%</Text>
-            <Text style={styles.tileLabel}>Humidity</Text>
+          <View style={[styles.tile, { backgroundColor: theme.colors.card }]}>
+            <Icon name="humidity" size={24} color={theme.colors.primary} />
+            <Text style={[styles.tileValue, { color: theme.colors.text }]}>{weather.humidity}%</Text>
+            <Text style={[styles.tileLabel, { color: theme.colors.textSecondary }]}>Humidity</Text>
           </View>
-          <View style={styles.tile}>
-            <Text style={styles.tileValue}>{weather.windSpeed} mph</Text>
-            <Text style={styles.tileLabel}>Wind</Text>
+          <View style={[styles.tile, { backgroundColor: theme.colors.card }]}>
+            <Icon name="windy" size={24} color={theme.colors.primary} />
+            <Text style={[styles.tileValue, { color: theme.colors.text }]}>{weather.windSpeed} mph</Text>
+            <Text style={[styles.tileLabel, { color: theme.colors.textSecondary }]}>Wind</Text>
           </View>
         </Animated.View>
       </Animated.View>
@@ -225,27 +232,31 @@ export function WeatherDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
-          accessibilityLabel="Go back">
-          <Text style={styles.backArrow}>←</Text>
+          accessibilityLabel="Go back"
+          activeOpacity={0.8}>
+          <Icon name="back" size={20} color={theme.colors.accent} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]} numberOfLines={1}>
           {locationName}
         </Text>
         <TouchableOpacity
           onPress={toggleUnit}
           style={styles.unitBtn}
-          accessibilityLabel={`Switch to ${unit === 'F' ? 'Celsius' : 'Fahrenheit'}`}>
-          <Text style={styles.unitBtnText}>{unit === 'F' ? '°C' : '°F'}</Text>
+          accessibilityLabel={`Switch to ${unit === 'F' ? 'Celsius' : 'Fahrenheit'}`}
+          activeOpacity={0.8}>
+          <Text style={[styles.unitBtnText, { color: theme.colors.primary }]}>
+            {unit === 'F' ? '°C' : '°F'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -253,7 +264,8 @@ export function WeatherDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#3D5AFE"
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
           />
         }>
         {renderContent()}
@@ -265,7 +277,6 @@ export function WeatherDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F2F8',
   },
   header: {
     flexDirection: 'row',
@@ -274,21 +285,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
   },
   backBtn: {
     padding: 4,
     minWidth: 36,
-  },
-  backArrow: {
-    fontSize: 20,
-    color: '#E07B39',
-    fontWeight: '600',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A2E',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 8,
@@ -296,15 +302,14 @@ const styles = StyleSheet.create({
   unitBtn: {
     minWidth: 36,
     alignItems: 'flex-end',
+    padding: 4,
   },
   unitBtnText: {
     fontSize: 16,
-    color: '#3D5AFE',
     fontWeight: '600',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E8EAF0',
   },
   scrollContent: {
     flexGrow: 1,
@@ -316,26 +321,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 16,
     minHeight: 300,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: '#888',
-    marginTop: 8,
+    paddingHorizontal: 24,
   },
   errorText: {
-    fontSize: 15,
-    color: '#D32F2F',
+    fontSize: 16,
     textAlign: 'center',
-    paddingHorizontal: 16,
+    fontWeight: '500',
   },
   retryBtn: {
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: '#3D5AFE',
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   retryText: {
     color: '#FFF',
@@ -344,41 +345,43 @@ const styles = StyleSheet.create({
   },
   weatherContent: {
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   temperature: {
-    fontSize: 56,
-    fontWeight: '700',
-    color: '#1A1A2E',
+    fontSize: 64,
+    fontWeight: '800',
     marginTop: 16,
   },
   condition: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 17,
     textAlign: 'center',
+    fontWeight: '500',
   },
   tiles: {
     flexDirection: 'row',
     gap: 16,
-    marginTop: 24,
+    marginTop: 32,
     width: '100%',
   },
   tile: {
     flex: 1,
-    backgroundColor: '#EEF1FB',
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tileValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#1A1A2E',
   },
   tileLabel: {
     fontSize: 13,
-    color: '#888',
     fontWeight: '500',
   },
 });

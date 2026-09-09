@@ -15,19 +15,20 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, City } from '../types';
 import { useCities } from '../hooks/useCities';
 import { useUnit } from '../hooks/useUnit';
+import { useTheme } from '../hooks/useTheme';
 import { fetchWeather, formatTemp } from '../services/weatherService';
+import { DOT_COLORS_LIGHT, DOT_COLORS_DARK } from '../theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SavedCities'>;
-
-// Assign a deterministic dot color based on city index
-const DOT_COLORS = ['#F5A623', '#9B9B9B', '#4A90E2', '#50C878', '#9B59B6'];
 
 interface CityWithTemp extends City {
   temperature: number | null;
 }
 
 // Move separator component outside render to avoid re-creation
-const ItemSeparator = () => <View style={styles.separator} />;
+const ItemSeparator = ({ theme }: { theme: any }) => (
+  <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+);
 
 // Animated City Row Component
 const AnimatedCityRow = ({ 
@@ -36,7 +37,8 @@ const AnimatedCityRow = ({
   onPress, 
   onLongPress, 
   temperature,
-  unit 
+  unit,
+  theme,
 }: {
   item: CityWithTemp;
   index: number;
@@ -44,9 +46,11 @@ const AnimatedCityRow = ({
   onLongPress: () => void;
   temperature: number | null;
   unit: 'C' | 'F';
+  theme: any;
 }) => {
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(50);
+  const dotColors = theme.isDark ? DOT_COLORS_DARK : DOT_COLORS_LIGHT;
 
   React.useEffect(() => {
     Animated.parallel([
@@ -72,25 +76,38 @@ const AnimatedCityRow = ({
         transform: [{ translateX: slideAnim }],
       }}>
       <TouchableOpacity
-        style={styles.cityRow}
+        style={[styles.cityRow, { backgroundColor: theme.colors.surface }]}
         onPress={onPress}
         onLongPress={onLongPress}
         activeOpacity={0.8}
         accessibilityLabel={`View weather for ${item.name}`}
         accessibilityHint="Long press to remove">
         <View style={styles.cityLeft}>
-          <Animated.View
-            style={[
-              styles.dot,
-              { 
-                backgroundColor: DOT_COLORS[index % DOT_COLORS.length],
-                transform: [{ scale: fadeAnim }],
-              },
-            ]}
-          />
-          <Text style={styles.cityName}>{item.name}</Text>
+          {item.isCurrentLocation ? (
+            <Animated.View
+              style={[
+                styles.locationIcon,
+                { 
+                  backgroundColor: theme.colors.primary,
+                  transform: [{ scale: fadeAnim }],
+                },
+              ]}>
+              <Text style={styles.locationIconText}>📍</Text>
+            </Animated.View>
+          ) : (
+            <Animated.View
+              style={[
+                styles.dot,
+                { 
+                  backgroundColor: dotColors[index % dotColors.length],
+                  transform: [{ scale: fadeAnim }],
+                },
+              ]}
+            />
+          )}
+          <Text style={[styles.cityName, { color: theme.colors.text }]}>{item.name}</Text>
         </View>
-        <Text style={styles.cityTemp}>
+        <Text style={[styles.cityTemp, { color: theme.colors.accent }]}>
           {temperature !== null ? formatTemp(temperature, unit) : '…'}
         </Text>
       </TouchableOpacity>
@@ -102,6 +119,7 @@ export function SavedCitiesScreen() {
   const navigation = useNavigation<Nav>();
   const { cities, loading, removeCity, reload } = useCities();
   const { unit } = useUnit();
+  const { theme, toggleTheme, getThemeModeLabel } = useTheme();
   const [temps, setTemps] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
@@ -173,12 +191,14 @@ export function SavedCitiesScreen() {
     : citiesWithTemp;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Animated Header */}
       <Animated.View 
         style={[
           styles.header,
           {
+            backgroundColor: theme.colors.surface,
+            borderBottomColor: theme.colors.border,
             opacity: headerAnim,
             transform: [{
               translateY: headerAnim.interpolate({
@@ -188,10 +208,18 @@ export function SavedCitiesScreen() {
             }]
           }
         ]}>
-        <Text style={styles.title}>Saved cities</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Saved cities</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.sortBtn, sortByTemp && styles.sortBtnActive]}
+            style={[styles.themeBtn]}
+            onPress={toggleTheme}
+            activeOpacity={0.8}>
+            <Text style={[styles.themeBtnText, { color: theme.colors.text }]}>
+              {getThemeModeLabel()}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortBtn, sortByTemp && { backgroundColor: theme.colors.primary }]}
             onPress={() => setSortByTemp(v => !v)}
             activeOpacity={0.8}>
             <Text style={[styles.sortBtnText, sortByTemp && styles.sortBtnTextActive]}>
@@ -199,7 +227,7 @@ export function SavedCitiesScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.addBtn}
+            style={[styles.addBtn, { backgroundColor: theme.colors.primary }]}
             onPress={() => navigation.navigate('AddCity')}
             accessibilityLabel="Add city"
             activeOpacity={0.8}>
@@ -208,39 +236,43 @@ export function SavedCitiesScreen() {
         </View>
       </Animated.View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
       {loading && cities.length === 0 ? (
-        <ActivityIndicator style={styles.loader} color="#3D5AFE" />
+        <ActivityIndicator style={styles.loader} color={theme.colors.primary} />
       ) : cities.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No cities saved yet.</Text>
-          <Text style={styles.emptySubText}>Tap + to add your first city.</Text>
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No cities saved yet.</Text>
+          <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>Tap + to add your first city.</Text>
         </View>
       ) : (
-        <FlatList
-          data={displayList}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#3D5AFE"
-            />
-          }
-          renderItem={({ item, index }) => (
-            <AnimatedCityRow
-              item={item}
-              index={index}
-              onPress={() => navigation.navigate('WeatherDetail', { city: item })}
-              onLongPress={() => handleDelete(item)}
-              temperature={temps[item.id] ?? null}
-              unit={unit}
-            />
-          )}
-          ItemSeparatorComponent={ItemSeparator}
-        />
+        <View style={[styles.list, { backgroundColor: theme.colors.card }]}>
+          <FlatList
+            data={displayList}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
+            }
+            renderItem={({ item, index }) => (
+              <AnimatedCityRow
+                item={item}
+                index={index}
+                onPress={() => navigation.navigate('WeatherDetail', { city: item })}
+                onLongPress={() => handleDelete(item)}
+                temperature={temps[item.id] ?? null}
+                unit={unit}
+                theme={theme}
+              />
+            )}
+            ItemSeparatorComponent={() => <ItemSeparator theme={theme} />}
+          />
+        </View>
       )}
     </View>
   );
@@ -249,7 +281,6 @@ export function SavedCitiesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F2F8',
   },
   header: {
     flexDirection: 'row',
@@ -258,17 +289,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A1A2E',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  themeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  themeBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   sortBtn: {
     paddingHorizontal: 10,
@@ -291,7 +330,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#3D5AFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -303,7 +341,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E8EAF0',
   },
   loader: {
     marginTop: 40,
@@ -317,18 +354,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#333',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#888',
   },
   list: {
-    backgroundColor: '#FFFFFF',
     marginTop: 16,
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
+  },
+  listContent: {
     paddingVertical: 4,
   },
   cityRow: {
@@ -348,19 +384,27 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
+  locationIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIconText: {
+    fontSize: 10,
+    lineHeight: 16,
+  },
   cityName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A2E',
   },
   cityTemp: {
     fontSize: 15,
-    color: '#E07B39',
     fontWeight: '500',
   },
   separator: {
     height: 1,
-    backgroundColor: '#F0F2F8',
     marginLeft: 38,
   },
 });

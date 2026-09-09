@@ -1,8 +1,9 @@
 import React from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from './src/hooks/useTheme';
 
 import { RootStackParamList } from './src/types';
 import { SavedCitiesScreen } from './src/screens/SavedCitiesScreen';
@@ -12,23 +13,23 @@ import { WeatherDetailScreen } from './src/screens/WeatherDetailScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const { theme } = useTheme();
 
   return (
     <SafeAreaProvider>
       <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor="#FFFFFF"
+        barStyle={theme.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.surface}
         translucent={false}
       />
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F2F8' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <NavigationContainer>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
               animation: 'slide_from_right',
               animationDuration: 300,
-              contentStyle: { backgroundColor: '#F0F2F8' },
+              contentStyle: { backgroundColor: theme.colors.background },
             }}>
             <Stack.Screen 
               name="SavedCities" 

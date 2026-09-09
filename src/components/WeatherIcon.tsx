@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 interface Props {
   conditionCode: number;
@@ -7,18 +8,21 @@ interface Props {
 }
 
 // Returns a color representing the weather condition
-function getIconColor(code: number): string {
-  if (code === 0 || code === 1) return '#F5A623'; // sunny/clear → orange
-  if (code === 2 || code === 3) return '#9B9B9B'; // cloudy → gray
-  if (code >= 51 && code <= 67) return '#4A90E2'; // rain → blue
-  if (code >= 71 && code <= 77) return '#B0C4DE'; // snow → light steel
-  if (code >= 80 && code <= 82) return '#5B9BD5'; // showers → medium blue
-  if (code >= 95) return '#7B68EE'; // thunderstorm → purple
-  return '#9B9B9B';
+function getIconColor(code: number, theme: any): string {
+  const colors = theme.colors.weather;
+  
+  if (code === 0 || code === 1) return colors.sunny; // sunny/clear
+  if (code === 2 || code === 3) return colors.cloudy; // cloudy
+  if (code >= 51 && code <= 67) return colors.rainy; // rain
+  if (code >= 71 && code <= 77) return colors.snowy; // snow
+  if (code >= 80 && code <= 82) return colors.rainy; // showers
+  if (code >= 95) return colors.stormy; // thunderstorm
+  return colors.cloudy;
 }
 
 export function WeatherIcon({ conditionCode, size = 80 }: Props) {
-  const color = getIconColor(conditionCode);
+  const { theme } = useTheme();
+  const color = getIconColor(conditionCode, theme);
   const pulseAnim = new Animated.Value(1);
 
   useEffect(() => {
@@ -42,6 +46,22 @@ export function WeatherIcon({ conditionCode, size = 80 }: Props) {
     
     pulse();
   }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.circle,
+        { 
+          width: size, 
+          height: size, 
+          borderRadius: size / 2, 
+          backgroundColor: color,
+          transform: [{ scale: pulseAnim }],
+        },
+      ]}
+    />
+  );
+}
 
   return (
     <Animated.View
