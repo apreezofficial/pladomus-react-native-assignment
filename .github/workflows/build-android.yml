@@ -37,15 +37,7 @@ jobs:
       run: yes | sdkmanager --licenses || true
         
     - name: Install dependencies
-      run: npm ci
-      
-    - name: Clear Metro cache
-      run: npx react-native start --reset-cache --no-interactive &
-      
-    - name: Wait and stop Metro
-      run: |
-        sleep 10
-        pkill -f "react-native start" || true
+      run: npm install
       
     - name: Create Android assets directory
       run: mkdir -p android/app/src/main/assets
