@@ -19,8 +19,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'npm'
-        cache-dependency-path: package-lock.json
         
     - name: Setup Java JDK
       uses: actions/setup-java@v4
@@ -30,15 +28,9 @@ jobs:
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-      
-    - name: Install Android NDK
-      run: |
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.1.8937393"
         
     - name: Install dependencies
-      run: |
-        npm install --package-lock-only
-        npm ci
+      run: npm install
       
     - name: Create Android assets directory
       run: mkdir -p android/app/src/main/assets
