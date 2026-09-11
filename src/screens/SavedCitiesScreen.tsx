@@ -120,7 +120,7 @@ export function SavedCitiesScreen() {
   const navigation = useNavigation<Nav>();
   const { cities, loading, removeCity, reload } = useCities();
   const { unit } = useUnit();
-  const { theme, toggleTheme, getThemeModeLabel } = useTheme();
+  const { theme } = useTheme();
   const [temps, setTemps] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
@@ -194,14 +194,6 @@ export function SavedCitiesScreen() {
         ]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Saved cities</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.themeBtn, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]}
-            onPress={toggleTheme}
-            activeOpacity={0.8}>
-            <Text style={[styles.themeBtnText, { color: theme.colors.text }]}>
-              {getThemeModeLabel()}
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.sortBtn, sortByTemp && { backgroundColor: theme.colors.primary }]}
             onPress={() => setSortByTemp(v => !v)}
@@ -289,15 +281,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  themeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  themeBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
   },
   sortBtn: {
     paddingHorizontal: 10,

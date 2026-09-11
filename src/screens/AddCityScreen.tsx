@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   PermissionsAndroid,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -50,25 +49,6 @@ export function AddCityScreen() {
   const [cityInput, setCityInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [locating, setLocating] = useState(false);
-  
-  // Animation values
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(30);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
 
   const handleAddCity = async () => {
     const trimmed = cityInput.trim();
@@ -139,27 +119,20 @@ export function AddCityScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Animated.View 
-        style={[
-          styles.card,
-          { backgroundColor: theme.colors.card },
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          }
-        ]}>
-        <View style={[styles.titleRow, { borderBottomColor: theme.colors.border }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Go back"
-            style={styles.backBtn}
-            activeOpacity={0.8}>
-            <Icon name="back" size={20} color={theme.colors.accent} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Add city</Text>
-        </View>
+        <View 
+          style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <View style={[styles.titleRow, { borderBottomColor: theme.colors.border }]}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Go back"
+              style={styles.backBtn}
+              activeOpacity={0.8}>
+              <Icon name="back" size={20} color={theme.colors.accent} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Add city</Text>
+          </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
         {/* City name input */}
         <View style={styles.inputSection}>
@@ -230,7 +203,7 @@ export function AddCityScreen() {
             </>
           )}
         </TouchableOpacity>
-      </Animated.View>
+      </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
