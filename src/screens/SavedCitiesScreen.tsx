@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, City } from '../types';
@@ -181,8 +182,8 @@ export function SavedCitiesScreen() {
     : citiesWithTemp;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Animated Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
       <View 
         style={[
           styles.header,
@@ -217,6 +218,7 @@ export function SavedCitiesScreen() {
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
+      </View>
 
       <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
@@ -262,8 +264,7 @@ export function SavedCitiesScreen() {
           />
         </View>
       )}
-    </View>
-  </View>
+    </SafeAreaView>
   );
 }
 
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: 1,
   },

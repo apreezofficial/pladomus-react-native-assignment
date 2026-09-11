@@ -20,41 +20,39 @@ export default function App() {
       <StatusBar
         barStyle={theme.isDark ? 'light-content' : 'dark-content'}
       />
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <NavigationContainer>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            contentStyle: { backgroundColor: theme.colors.background },
+          }}>
+          <Stack.Screen 
+            name="SavedCities" 
+            component={SavedCitiesScreen}
+            options={{
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen 
+            name="AddCity" 
+            component={AddCityScreen}
+            options={{
               animation: 'slide_from_right',
+              animationDuration: 250,
+            }}
+          />
+          <Stack.Screen 
+            name="WeatherDetail" 
+            component={WeatherDetailScreen}
+            options={{
+              animation: 'slide_from_bottom',
               animationDuration: 300,
-              contentStyle: { backgroundColor: theme.colors.background },
-            }}>
-            <Stack.Screen 
-              name="SavedCities" 
-              component={SavedCitiesScreen}
-              options={{
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen 
-              name="AddCity" 
-              component={AddCityScreen}
-              options={{
-                animation: 'slide_from_right',
-                animationDuration: 250,
-              }}
-            />
-            <Stack.Screen 
-              name="WeatherDetail" 
-              component={WeatherDetailScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                animationDuration: 300,
-              }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaView>
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
