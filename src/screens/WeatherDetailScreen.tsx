@@ -10,6 +10,7 @@ import {
   Platform,
   PermissionsAndroid,
   Animated,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -57,6 +58,7 @@ export function WeatherDetailScreen() {
   const [locationName, setLocationName] = useState<string>(city?.name ?? 'My Location');
   const [refreshing, setRefreshing] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Animation values
   const fadeAnim = new Animated.Value(0);
@@ -65,8 +67,13 @@ export function WeatherDetailScreen() {
 
   const acquireCoords = useCallback(async () => {
     if (city) {
-      setCoords({ lat: city.latitude, lon: city.longitude });
+      // For saved cities, immediately set coordinates and load weather
+      const cityCoords = { lat: city.latitude, lon: city.longitude };
+      setCoords(cityCoords);
       setLocationName(city.name);
+      // Immediately load weather data for saved cities
+      refresh(cityCoords.lat, cityCoords.lon);
+      setInitialLoadComplete(true);
       return;
     }
 
@@ -81,31 +88,36 @@ export function WeatherDetailScreen() {
 
         Geolocation.getCurrentPosition(
           position => {
-            setCoords({
+            const currentCoords = {
               lat: position.coords.latitude,
               lon: position.coords.longitude,
-            });
+            };
+            setCoords(currentCoords);
             setLocationName('My Location');
+            // Load weather data for current location
+            refresh(currentCoords.lat, currentCoords.lon);
+            setInitialLoadComplete(true);
           },
           err => {
             setLocationError(err.message);
+            setInitialLoadComplete(true);
           },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
         );
       } catch (e: any) {
         setLocationError(e?.message ?? 'Location error');
+        setInitialLoadComplete(true);
       }
     }
-  }, [city, useCurrentLocation]);
+  }, [city, useCurrentLocation, refresh]);
 
   useEffect(() => {
     acquireCoords();
   }, [acquireCoords]);
 
   useEffect(() => {
-    if (coords) {
-      refresh(coords.lat, coords.lon);
-      // Animate weather content when data loads
+    // Animate weather content when data loads
+    if (weather && initialLoadComplete) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -124,7 +136,7 @@ export function WeatherDetailScreen() {
         }),
       ]).start();
     }
-  }, [coords, refresh]);
+  }, [weather, initialLoadComplete]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -139,17 +151,24 @@ export function WeatherDetailScreen() {
   const renderContent = () => {
     if (locationError) {
       return (
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{locationError}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={acquireCoords}>
-            <Text style={styles.retryText}>Retry</Text>
+        <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
+          <Icon name="location" size={60} color={theme.colors.accent} />
+          <Text style={[styles.errorText, { color: theme.colors.text }]}>{locationError}</Text>
+          <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+            {useCurrentLocation ? 'Using current location' : city ? `City: ${city.name}` : 'No location data'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]} 
+            onPress={acquireCoords}>
+            <Icon name="refresh" size={16} color="#FFF" />
+            <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
-    if (loading || (!weather && !error)) {
-      return <LoadingAnimation message="Loading weather data…" />;
+    if (loading || (!weather && !error && !locationError)) {
+      return <LoadingAnimation message={city ? `Loading weather for ${city.name}…` : "Getting your location and weather…"} />;
     }
 
     if (error) {
@@ -232,7 +251,7 @@ export function WeatherDetailScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
@@ -270,7 +289,7 @@ export function WeatherDetailScreen() {
         }>
         {renderContent()}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -283,8 +302,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
   },
   backBtn: {
@@ -383,5 +402,10 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  debugText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });
