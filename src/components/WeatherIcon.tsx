@@ -63,22 +63,6 @@ export function WeatherIcon({ conditionCode, size = 80 }: Props) {
   );
 }
 
-  return (
-    <Animated.View
-      style={[
-        styles.circle,
-        { 
-          width: size, 
-          height: size, 
-          borderRadius: size / 2, 
-          backgroundColor: color,
-          transform: [{ scale: pulseAnim }],
-        },
-      ]}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
   circle: {
     shadowColor: '#000',
