@@ -19,8 +19,6 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar
         barStyle={theme.isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.surface}
-        translucent={false}
       />
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <NavigationContainer>

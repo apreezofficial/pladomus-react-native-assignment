@@ -263,6 +263,7 @@ export function SavedCitiesScreen() {
         </View>
       )}
     </View>
+  </View>
   );
 }
 
