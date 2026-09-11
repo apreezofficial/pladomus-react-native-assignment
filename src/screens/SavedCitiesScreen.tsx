@@ -237,7 +237,7 @@ export function SavedCitiesScreen() {
         <View style={[styles.list, { backgroundColor: theme.colors.card }]}>
           <FlatList
             data={displayList}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl
