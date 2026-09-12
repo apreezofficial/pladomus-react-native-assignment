@@ -1,16 +1,16 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   RefreshControl,
   Platform,
   PermissionsAndroid,
   Animated,
-  SafeAreaView,         
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Geolocation from 'react-native-geolocation-service';
