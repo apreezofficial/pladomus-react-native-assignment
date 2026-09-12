@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,21 +22,21 @@ import { DOT_COLORS_LIGHT, DOT_COLORS_DARK } from '../theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SavedCities'>;
 
+type TempState = 'loading' | 'error' | number;
+
 interface CityWithTemp extends City {
-  temperature: number | null;
+  temperature: TempState;
 }
 
-// Move separator component outside render to avoid re-creation
 const ItemSeparator = ({ theme }: { theme: any }) => (
   <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
 );
 
-// Animated City Row Component
-const AnimatedCityRow = ({ 
-  item, 
-  index, 
-  onPress, 
-  onLongPress, 
+const AnimatedCityRow = ({
+  item,
+  index,
+  onPress,
+  onDelete,
   temperature,
   unit,
   theme,
@@ -44,31 +44,53 @@ const AnimatedCityRow = ({
   item: CityWithTemp;
   index: number;
   onPress: () => void;
-  onLongPress: () => void;
-  temperature: number | null;
+  onDelete: () => void;
+  temperature: TempState;
   unit: 'C' | 'F';
   theme: any;
 }) => {
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(50);
+  // useRef so these values persist across re-renders instead of being
+  // recreated (and snapped back to their start value) every time the
+  // parent re-renders, e.g. when temps finish loading.
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
   const dotColors = theme.isDark ? DOT_COLORS_DARK : DOT_COLORS_LIGHT;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 400,
-        delay: index * 100, // Stagger animation
+        delay: index * 60,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 400,
-        delay: index * 100,
+        delay: index * 60,
         useNativeDriver: true,
       }),
     ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const renderTemp = () => {
+    if (temperature === 'loading') {
+      return <ActivityIndicator size="small" color={theme.colors.accent} />;
+    }
+    if (temperature === 'error') {
+      return (
+        <Text style={[styles.cityTempError, { color: theme.colors.textSecondary }]}>
+          --
+        </Text>
+      );
+    }
+    return (
+      <Text style={[styles.cityTemp, { color: theme.colors.accent }]}>
+        {formatTemp(temperature, unit)}
+      </Text>
+    );
+  };
 
   return (
     <Animated.View
@@ -79,38 +101,33 @@ const AnimatedCityRow = ({
       <TouchableOpacity
         style={[styles.cityRow, { backgroundColor: theme.colors.surface }]}
         onPress={onPress}
-        onLongPress={onLongPress}
         activeOpacity={0.8}
-        accessibilityLabel={`View weather for ${item.name}`}
-        accessibilityHint="Long press to remove">
+        accessibilityLabel={`View weather for ${item.name}`}>
         <View style={styles.cityLeft}>
           {item.isCurrentLocation ? (
-            <Animated.View
-              style={[
-                styles.locationIcon,
-                { 
-                  backgroundColor: theme.colors.primary,
-                  transform: [{ scale: fadeAnim }],
-                },
-              ]}>
+            <View style={[styles.locationIcon, { backgroundColor: theme.colors.primary }]}>
               <Text style={styles.locationIconText}>📍</Text>
-            </Animated.View>
+            </View>
           ) : (
-            <Animated.View
-              style={[
-                styles.dot,
-                { 
-                  backgroundColor: dotColors[index % dotColors.length],
-                  transform: [{ scale: fadeAnim }],
-                },
-              ]}
+            <View
+              style={[styles.dot, { backgroundColor: dotColors[index % dotColors.length] }]}
             />
           )}
           <Text style={[styles.cityName, { color: theme.colors.text }]}>{item.name}</Text>
         </View>
-        <Text style={[styles.cityTemp, { color: theme.colors.accent }]}>
-          {temperature !== null ? formatTemp(temperature, unit) : '…'}
-        </Text>
+
+        <View style={styles.cityRight}>
+          {renderTemp()}
+          {/* Visible delete affordance — long-press still works, but this
+              makes the action discoverable without relying on it. */}
+          <TouchableOpacity
+            onPress={onDelete}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.deleteBtn}
+            accessibilityLabel={`Remove ${item.name}`}>
+            <Text style={[styles.deleteBtnText, { color: theme.colors.textSecondary }]}>✕</Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -121,28 +138,38 @@ export function SavedCitiesScreen() {
   const { cities, loading, removeCity, reload } = useCities();
   const { unit } = useUnit();
   const { theme } = useTheme();
-  const [temps, setTemps] = useState<Record<string, number | null>>({});
+  const [temps, setTemps] = useState<Record<string, TempState>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
 
-  // Reload list whenever screen comes into focus (after adding a city)
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload]),
   );
 
-  // Fetch temperatures for all cities
   const fetchAllTemps = useCallback(async (cityList: City[]) => {
+    // Mark all as loading up front so a re-fetch doesn't leave stale
+    // numbers next to a spinner-less "loading forever" state.
+    setTemps(prev => {
+      const next = { ...prev };
+      cityList.forEach(c => {
+        next[c.id] = 'loading';
+      });
+      return next;
+    });
+
     const entries = await Promise.allSettled(
       cityList.map(city => fetchWeather(city.latitude, city.longitude)),
     );
-    const map: Record<string, number | null> = {};
-    entries.forEach((result, i) => {
-      map[cityList[i].id] =
-        result.status === 'fulfilled' ? result.value.temperature : null;
+    setTemps(prev => {
+      const next = { ...prev };
+      entries.forEach((result, i) => {
+        next[cityList[i].id] =
+          result.status === 'fulfilled' ? result.value.temperature : 'error';
+      });
+      return next;
     });
-    setTemps(map);
   }, []);
 
   useEffect(() => {
@@ -170,35 +197,40 @@ export function SavedCitiesScreen() {
 
   const citiesWithTemp: CityWithTemp[] = cities.map(c => ({
     ...c,
-    temperature: temps[c.id] ?? null,
+    temperature: temps[c.id] ?? 'loading',
   }));
 
   const displayList = sortByTemp
     ? [...citiesWithTemp].sort((a, b) => {
-        if (a.temperature === null) return 1;
-        if (b.temperature === null) return -1;
-        return b.temperature - a.temperature;
+        const aNum = typeof a.temperature === 'number' ? a.temperature : -Infinity;
+        const bNum = typeof b.temperature === 'number' ? b.temperature : -Infinity;
+        return bNum - aNum;
       })
     : citiesWithTemp;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View 
+      <View
         style={[
           styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          }
+          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border },
         ]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Saved cities</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.sortBtn, sortByTemp && { backgroundColor: theme.colors.primary }]}
+            style={[
+              styles.sortBtn,
+              { backgroundColor: theme.colors.background },
+              sortByTemp && [styles.sortBtnActive, { backgroundColor: theme.colors.primary }],
+            ]}
             onPress={() => setSortByTemp(v => !v)}
             activeOpacity={0.8}>
-            <Text style={[styles.sortBtnText, sortByTemp && styles.sortBtnTextActive]}>
+            <Text
+              style={[
+                styles.sortBtnText,
+                { color: theme.colors.textSecondary },
+                sortByTemp && styles.sortBtnTextActive,
+              ]}>
               {sortByTemp ? '↕ Temp' : '↕ Sort'}
             </Text>
           </TouchableOpacity>
@@ -218,8 +250,11 @@ export function SavedCitiesScreen() {
         <ActivityIndicator style={styles.loader} color={theme.colors.primary} />
       ) : cities.length === 0 ? (
         <View style={styles.empty}>
+          <Text style={styles.emptyIcon}>🏙️</Text>
           <Text style={[styles.emptyText, { color: theme.colors.text }]}>No cities saved yet</Text>
-          <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>Tap the + button above to add your first city</Text>
+          <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>
+            Tap the + button above to add your first city
+          </Text>
           <TouchableOpacity
             style={[styles.emptyAddBtn, { backgroundColor: theme.colors.primary }]}
             onPress={() => navigation.navigate('AddCity')}
@@ -231,7 +266,7 @@ export function SavedCitiesScreen() {
         <View style={[styles.list, { backgroundColor: theme.colors.card }]}>
           <FlatList
             data={displayList}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl
@@ -246,8 +281,8 @@ export function SavedCitiesScreen() {
                 item={item}
                 index={index}
                 onPress={() => navigation.navigate('WeatherDetail', { city: item })}
-                onLongPress={() => handleDelete(item)}
-                temperature={temps[item.id] ?? null}
+                onDelete={() => handleDelete(item)}
+                temperature={item.temperature}
                 unit={unit}
                 theme={theme}
               />
@@ -261,9 +296,7 @@ export function SavedCitiesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,32 +306,16 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  title: { fontSize: 22, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sortBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: '#F0F2F8',
   },
-  sortBtnActive: {
-    backgroundColor: '#3D5AFE',
-  },
-  sortBtnText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-  },
-  sortBtnTextActive: {
-    color: '#FFF',
-  },
+  sortBtnActive: {},
+  sortBtnText: { fontSize: 12, fontWeight: '600' },
+  sortBtnTextActive: { color: '#FFF' },
   addBtn: {
     width: 40,
     height: 40,
@@ -311,35 +328,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  addBtnText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '700',
-  },
-  divider: {
-    height: 1,
-  },
-  loader: {
-    marginTop: 40,
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  emptySubText: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  addBtnText: { color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontWeight: '700' },
+  divider: { height: 1 },
+  loader: { marginTop: 40 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
+  emptyIcon: { fontSize: 40, marginBottom: 4 },
+  emptyText: { fontSize: 20, fontWeight: '600', textAlign: 'center' },
+  emptySubText: { fontSize: 16, textAlign: 'center', lineHeight: 22 },
   emptyAddBtn: {
     marginTop: 16,
     paddingHorizontal: 24,
@@ -351,20 +346,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  emptyAddBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  list: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  listContent: {
-    paddingVertical: 4,
-  },
+  emptyAddBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  list: { marginTop: 16, marginHorizontal: 16, borderRadius: 16, overflow: 'hidden' },
+  listContent: { paddingVertical: 4 },
   cityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,16 +356,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  cityLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
+  cityLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cityRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   locationIcon: {
     width: 16,
     height: 16,
@@ -389,20 +366,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  locationIconText: {
-    fontSize: 10,
-    lineHeight: 16,
-  },
-  cityName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cityTemp: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  separator: {
-    height: 1,
-    marginLeft: 38,
-  },
+  locationIconText: { fontSize: 10, lineHeight: 16 },
+  cityName: { fontSize: 16, fontWeight: '600' },
+  cityTemp: { fontSize: 15, fontWeight: '500' },
+  cityTempError: { fontSize: 15, fontWeight: '500' },
+  deleteBtn: { padding: 2 },
+  deleteBtnText: { fontSize: 14, fontWeight: '600' },
+  separator: { height: 1, marginLeft: 38 },
 });

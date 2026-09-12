@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   RefreshControl,
   Platform,
@@ -19,7 +18,6 @@ import { RootStackParamList } from '../types';
 import { useWeather } from '../hooks/useWeather';
 import { useUnit } from '../hooks/useUnit';
 import { formatTemp } from '../services/weatherService';
-import { WeatherIcon } from '../components/WeatherIcon';
 import { LottieWeatherIcon } from '../components/LottieWeatherIcon';
 import { LoadingAnimation } from '../components/LoadingAnimation';
 import { Icon } from '../components/Icon';
@@ -60,18 +58,22 @@ export function WeatherDetailScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Animation values
-  const fadeAnim = new Animated.Value(0);
-  const scaleAnim = new Animated.Value(0.8);
-  const slideAnim = new Animated.Value(50);
+  // useRef — these must persist across renders. Recreating them (the old
+  // way, with `new Animated.Value(...)` directly in the component body)
+  // meant any re-render — including a unit toggle, which doesn't change
+  // `weather` — swapped in a fresh, un-animated Value and made the whole
+  // weather card flash invisible.
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const hasAnimatedIn = useRef(false);
 
   const acquireCoords = useCallback(async () => {
     if (city) {
-      // For saved cities, immediately set coordinates and load weather
       const cityCoords = { lat: city.latitude, lon: city.longitude };
       setCoords(cityCoords);
       setLocationName(city.name);
-      // Immediately load weather data for saved cities
+      setLocationError(null);
       refresh(cityCoords.lat, cityCoords.lon);
       setInitialLoadComplete(true);
       return;
@@ -83,6 +85,7 @@ export function WeatherDetailScreen() {
         const granted = await requestLocationPermission();
         if (!granted) {
           setLocationError('Location permission denied.');
+          setInitialLoadComplete(true);
           return;
         }
 
@@ -94,7 +97,6 @@ export function WeatherDetailScreen() {
             };
             setCoords(currentCoords);
             setLocationName('My Location');
-            // Load weather data for current location
             refresh(currentCoords.lat, currentCoords.lon);
             setInitialLoadComplete(true);
           },
@@ -116,27 +118,17 @@ export function WeatherDetailScreen() {
   }, [acquireCoords]);
 
   useEffect(() => {
-    // Animate weather content when data loads
-    if (weather && initialLoadComplete) {
+    // Only play the intro animation once per screen visit, not every
+    // time `weather` gets a new object reference (e.g. pull-to-refresh).
+    if (weather && initialLoadComplete && !hasAnimatedIn.current) {
+      hasAnimatedIn.current = true;
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
       ]).start();
     }
-  }, [weather, initialLoadComplete]);
+  }, [weather, initialLoadComplete, fadeAnim, scaleAnim, slideAnim]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -148,17 +140,22 @@ export function WeatherDetailScreen() {
     setRefreshing(false);
   }, [coords, refresh, acquireCoords]);
 
+  const handleRetry = () => {
+    if (coords) {
+      refresh(coords.lat, coords.lon);
+    } else {
+      acquireCoords();
+    }
+  };
+
   const renderContent = () => {
     if (locationError) {
       return (
         <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
           <Icon name="location" size={60} color={theme.colors.accent} />
           <Text style={[styles.errorText, { color: theme.colors.text }]}>{locationError}</Text>
-          <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
-            {useCurrentLocation ? 'Using current location' : city ? `City: ${city.name}` : 'No location data'}
-          </Text>
           <TouchableOpacity
-            style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]} 
+            style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]}
             onPress={acquireCoords}>
             <Icon name="refresh" size={16} color="#FFF" />
             <Text style={styles.retryText}>Try Again</Text>
@@ -168,7 +165,11 @@ export function WeatherDetailScreen() {
     }
 
     if (loading || (!weather && !error && !locationError)) {
-      return <LoadingAnimation message={city ? `Loading weather for ${city.name}…` : "Getting your location and weather…"} />;
+      return (
+        <LoadingAnimation
+          message={city ? `Loading weather for ${city.name}…` : 'Getting your location and weather…'}
+        />
+      );
     }
 
     if (error) {
@@ -178,7 +179,7 @@ export function WeatherDetailScreen() {
           <Text style={[styles.errorText, { color: theme.colors.text }]}>{error}</Text>
           <TouchableOpacity
             style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]}
-            onPress={() => coords && refresh(coords.lat, coords.lon)}>
+            onPress={handleRetry}>
             <Icon name="refresh" size={16} color="#FFF" />
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
@@ -188,53 +189,31 @@ export function WeatherDetailScreen() {
 
     if (!weather) return null;
 
-    // Build feels-like display without redundant unit symbol
-    const feelsStr = unit === 'F'
-      ? `${Math.round((weather.feelsLike * 9) / 5 + 32)}°`
-      : `${weather.feelsLike}°`;
+    const feelsStr =
+      unit === 'F'
+        ? `${Math.round((weather.feelsLike * 9) / 5 + 32)}°`
+        : `${weather.feelsLike}°`;
 
     return (
-      <Animated.View 
+      <Animated.View
         style={[
           styles.weatherContent,
           {
             opacity: fadeAnim,
-            transform: [
-              { scale: scaleAnim },
-              { translateY: slideAnim }
-            ],
-          }
+            transform: [{ scale: scaleAnim }, { translateY: slideAnim }],
+          },
         ]}>
-        <Animated.View
-          style={{
-            transform: [{ scale: scaleAnim }],
-          }}>
-          <LottieWeatherIcon conditionCode={weather.conditionCode} size={120} />
-        </Animated.View>
+        <LottieWeatherIcon conditionCode={weather.conditionCode} size={120} />
 
-        <Animated.Text 
-          style={[
-            styles.temperature,
-            { 
-              opacity: fadeAnim,
-              color: theme.colors.text,
-            }
-          ]}>
+        <Text style={[styles.temperature, { color: theme.colors.text }]}>
           {formatTemp(weather.temperature, unit)}
-        </Animated.Text>
+        </Text>
 
         <Text style={[styles.condition, { color: theme.colors.textSecondary }]}>
           {weather.condition}, feels like {feelsStr}
         </Text>
 
-        <Animated.View 
-          style={[
-            styles.tiles,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            }
-          ]}>
+        <View style={styles.tiles}>
           <View style={[styles.tile, { backgroundColor: theme.colors.card }]}>
             <Icon name="humidity" size={24} color={theme.colors.primary} />
             <Text style={[styles.tileValue, { color: theme.colors.text }]}>{weather.humidity}%</Text>
@@ -245,14 +224,13 @@ export function WeatherDetailScreen() {
             <Text style={[styles.tileValue, { color: theme.colors.text }]}>{weather.windSpeed} mph</Text>
             <Text style={[styles.tileLabel, { color: theme.colors.textSecondary }]}>Wind</Text>
           </View>
-        </Animated.View>
+        </View>
       </Animated.View>
     );
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -294,9 +272,7 @@ export function WeatherDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -306,36 +282,12 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  backBtn: {
-    padding: 4,
-    minWidth: 36,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 8,
-  },
-  unitBtn: {
-    minWidth: 36,
-    alignItems: 'flex-end',
-    padding: 4,
-  },
-  unitBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 48,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
+  backBtn: { padding: 4, minWidth: 36, alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '700', flex: 1, textAlign: 'center', marginHorizontal: 8 },
+  unitBtn: { minWidth: 36, alignItems: 'flex-end', padding: 4 },
+  unitBtnText: { fontSize: 16, fontWeight: '600' },
+  divider: { height: 1 },
+  scrollContent: { flexGrow: 1, paddingTop: 48, paddingHorizontal: 24, paddingBottom: 40 },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -344,11 +296,7 @@ const styles = StyleSheet.create({
     minHeight: 300,
     paddingHorizontal: 24,
   },
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
+  errorText: { fontSize: 16, textAlign: 'center', fontWeight: '500' },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,31 +305,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  retryText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  weatherContent: {
-    alignItems: 'center',
-    gap: 16,
-  },
-  temperature: {
-    fontSize: 64,
-    fontWeight: '800',
-    marginTop: 16,
-  },
-  condition: {
-    fontSize: 17,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  tiles: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 32,
-    width: '100%',
-  },
+  retryText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
+  weatherContent: { alignItems: 'center', gap: 16 },
+  temperature: { fontSize: 64, fontWeight: '800', marginTop: 16 },
+  condition: { fontSize: 17, textAlign: 'center', fontWeight: '500' },
+  tiles: { flexDirection: 'row', gap: 16, marginTop: 32, width: '100%' },
   tile: {
     flex: 1,
     borderRadius: 20,
@@ -395,17 +323,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  tileValue: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  tileLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  debugText: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
+  tileValue: { fontSize: 22, fontWeight: '700' },
+  tileLabel: { fontSize: 13, fontWeight: '500' },
 });

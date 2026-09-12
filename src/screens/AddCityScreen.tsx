@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   PermissionsAndroid,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -37,9 +38,43 @@ async function requestLocationPermission(): Promise<boolean> {
     );
     return granted === PermissionsAndroid.RESULTS.GRANTED;
   }
-  // iOS — Geolocation.requestAuthorization handles it
   const auth = await Geolocation.requestAuthorization('whenInUse');
   return auth === 'granted';
+}
+
+// Small helper for tactile press feedback — every tappable in this
+// screen uses it so nothing feels dead on tap.
+function PressableScale({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+  style?: any;
+  children: React.ReactNode;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, disabled && { opacity: 0.6 }]}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        disabled={disabled}
+        style={style}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
 }
 
 export function AddCityScreen() {
@@ -49,20 +84,23 @@ export function AddCityScreen() {
   const [cityInput, setCityInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [locating, setLocating] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  const trimmedInput = cityInput.trim();
+  const canAdd = trimmedInput.length > 0 && !adding && !locating;
 
   const handleAddCity = async () => {
-    const trimmed = cityInput.trim();
-    if (!trimmed) {
-      Alert.alert('Enter a city name');
+    if (!trimmedInput) {
+      inputRef.current?.focus();
       return;
     }
     setAdding(true);
     try {
-      const result = await geocodeCity(trimmed);
+      const result = await geocodeCity(trimmedInput);
       if (!result) {
         Alert.alert(
           'City not found',
-          `Could not find "${trimmed}". Try a different spelling.`,
+          `Could not find "${trimmedInput}". Try a different spelling.`,
         );
         return;
       }
@@ -95,17 +133,14 @@ export function AddCityScreen() {
       Geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
-          // Save current location as a city
           await saveCurrentLocation(latitude, longitude, 'My Location');
-          await reload(); // Refresh the cities list
-          
+          await reload();
           navigation.navigate('WeatherDetail', { useCurrentLocation: true });
         },
         (error) => {
           Alert.alert('Location error', error.message);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
       );
     } catch (e: any) {
       Alert.alert('Location error', e?.message ?? 'Could not access location.');
@@ -119,91 +154,98 @@ export function AddCityScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View 
-          style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          <View style={[styles.titleRow, { borderBottomColor: theme.colors.border }]}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              accessibilityLabel="Go back"
-              style={styles.backBtn}
-              activeOpacity={0.8}>
-              <Icon name="back" size={20} color={theme.colors.accent} />
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Add city</Text>
+        {/* Header — outside the card, gives the screen room to breathe */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+            style={[styles.backBtn, { backgroundColor: theme.colors.surface }]}
+            activeOpacity={0.8}>
+            <Icon name="back" size={18} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.title, { color: theme.colors.text }]}>Add a city</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          Search for a place or drop a pin on where you are
+        </Text>
+
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          {/* City input with leading icon + clear affordance */}
+          <View style={styles.inputSection}>
+            <Text style={[styles.label, { color: theme.colors.accent }]}>City name</Text>
+            <View
+              style={[
+                styles.inputWrap,
+                {
+                  borderColor: cityInput ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}>
+              <Icon name="search" size={16} color={theme.colors.textSecondary} />
+              <TextInput
+                ref={inputRef}
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="e.g. Lisbon"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={cityInput}
+                onChangeText={setCityInput}
+                onSubmitEditing={handleAddCity}
+                returnKeyType="done"
+                autoCapitalize="words"
+                autoCorrect={false}
+                autoFocus
+                accessibilityLabel="City name input"
+              />
+              {cityInput.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setCityInput('')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Clear input">
+                  <Icon name="close" size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <PressableScale
+            onPress={handleAddCity}
+            disabled={!canAdd}
+            style={[styles.addBtn, { backgroundColor: theme.colors.primary }]}>
+            {adding ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Icon name="add" size={16} color="#FFF" />
+                <Text style={styles.addBtnText}>Add city</Text>
+              </>
+            )}
+          </PressableScale>
 
-        {/* City name input */}
-        <View style={styles.inputSection}>
-          <Text style={[styles.label, { color: theme.colors.accent }]}>City name</Text>
-          <TextInput
-            style={[styles.input, { 
-              borderColor: theme.colors.border, 
-              backgroundColor: theme.colors.surface,
-              color: theme.colors.text 
-            }]}
-            placeholder="e.g. Lisbon"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={cityInput}
-            onChangeText={setCityInput}
-            onSubmitEditing={handleAddCity}
-            returnKeyType="done"
-            autoCapitalize="words"
-            autoCorrect={false}
-            accessibilityLabel="City name input"
-          />
+          <View style={styles.orRow}>
+            <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
+            <View style={[styles.orPill, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.orText, { color: theme.colors.textSecondary }]}>OR</Text>
+            </View>
+            <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
+          </View>
+
+          <PressableScale
+            onPress={handleUseLocation}
+            disabled={adding || locating}
+            style={[styles.locationBtn, { borderColor: theme.colors.border }]}>
+            {locating ? (
+              <ActivityIndicator color={theme.colors.primary} />
+            ) : (
+              <>
+                <Icon name="location" size={16} color={theme.colors.primary} />
+                <Text style={[styles.locationBtnText, { color: theme.colors.text }]}>
+                  Use my current location
+                </Text>
+              </>
+            )}
+          </PressableScale>
         </View>
-
-        {/* Add city button */}
-        <TouchableOpacity
-          style={[
-            styles.addBtn, 
-            { backgroundColor: theme.colors.primary }, 
-            (adding || locating) && styles.btnDisabled
-          ]}
-          onPress={handleAddCity}
-          disabled={adding || locating}
-          accessibilityLabel="Add city"
-          activeOpacity={0.8}>
-          {adding ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <Icon name="add" size={16} color="#FFF" />
-              <Text style={styles.addBtnText}>Add city</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Divider with "or" */}
-        <View style={styles.orRow}>
-          <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
-          <Text style={[styles.orText, { color: theme.colors.textSecondary }]}>or</Text>
-          <View style={[styles.orLine, { backgroundColor: theme.colors.border }]} />
-        </View>
-
-        {/* Use my location button */}
-        <TouchableOpacity
-          style={[
-            styles.locationBtn, 
-            { borderColor: theme.colors.border }, 
-            (adding || locating) && styles.btnDisabled
-          ]}
-          onPress={handleUseLocation}
-          disabled={adding || locating}
-          accessibilityLabel="Use my current location"
-          activeOpacity={0.8}>
-          {locating ? (
-            <ActivityIndicator color={theme.colors.primary} />
-          ) : (
-            <>
-              <Icon name="location" size={16} color={theme.colors.primary} />
-              <Text style={[styles.locationBtnText, { color: theme.colors.text }]}>Use my current location</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -212,49 +254,58 @@ export function AddCityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
-    paddingTop: 20,
-    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingHorizontal: 20,
   },
-  card: {
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  titleRow: {
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 10,
+    marginBottom: 8,
   },
   backBtn: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
+    marginTop: 8,
   },
-  divider: {
-    height: 1,
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
     marginBottom: 20,
   },
+  card: {
+    borderRadius: 22,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
   inputSection: {
-    marginBottom: 16,
+    marginBottom: 18,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
     fontSize: 16,
   },
   addBtn: {
@@ -262,17 +313,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
     marginBottom: 20,
   },
   addBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-  },
-  btnDisabled: {
-    opacity: 0.6,
   },
   orRow: {
     flexDirection: 'row',
@@ -284,8 +332,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 1,
   },
+  orPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
   orText: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   locationBtn: {
     flexDirection: 'row',
@@ -293,8 +348,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
   },
   locationBtnText: {
     fontSize: 16,
