@@ -83,7 +83,7 @@ export function AddCityScreen() {
   const [cityInput, setCityInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [locating, setLocating] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<any>(null);
 
   const trimmedInput = cityInput.trim();
   const canAdd = trimmedInput.length > 0 && !adding && !locating;
