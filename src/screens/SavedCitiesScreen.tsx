@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
-  ActivityIndicator,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,7 +75,7 @@ const AnimatedCityRow = ({
 
   const renderTemp = () => {
     if (temperature === 'loading') {
-      return <ActivityIndicator size="small" color={theme.colors.accent} />;
+      return <View style={[styles.shimmerTemp, { backgroundColor: theme.isDark ? '#2B3343' : '#E7EBF3' }]} />;
     }
     if (temperature === 'error') {
       return (
@@ -247,7 +246,23 @@ export function SavedCitiesScreen() {
       <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
       {loading && cities.length === 0 ? (
-        <ActivityIndicator style={styles.loader} color={theme.colors.primary} />
+        <View style={styles.skeletonList}>
+          {[0, 1, 2].map(item => (
+            <View
+              key={item}
+              style={[
+                styles.skeletonRow,
+                { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+              ]}>
+              <View style={[styles.skeletonCircle, { backgroundColor: theme.isDark ? '#2B3343' : '#E7EBF3' }]} />
+              <View style={styles.skeletonTextBlock}>
+                <View style={[styles.skeletonLine, { backgroundColor: theme.isDark ? '#2B3343' : '#E7EBF3' }]} />
+                <View style={[styles.skeletonLineSmall, { backgroundColor: theme.isDark ? '#2B3343' : '#E7EBF3' }]} />
+              </View>
+              <View style={[styles.skeletonTemp, { backgroundColor: theme.isDark ? '#2B3343' : '#E7EBF3' }]} />
+            </View>
+          ))}
+        </View>
       ) : cities.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🏙️</Text>
@@ -330,7 +345,50 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontWeight: '700' },
   divider: { height: 1 },
-  loader: { marginTop: 40 },
+  shimmerTemp: {
+    width: 46,
+    height: 18,
+    borderRadius: 9,
+  },
+  skeletonList: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  skeletonCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  skeletonTextBlock: {
+    flex: 1,
+    gap: 8,
+  },
+  skeletonLine: {
+    width: '70%',
+    height: 14,
+    borderRadius: 7,
+  },
+  skeletonLineSmall: {
+    width: '45%',
+    height: 10,
+    borderRadius: 5,
+  },
+  skeletonTemp: {
+    width: 46,
+    height: 18,
+    borderRadius: 9,
+  },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
   emptyIcon: { fontSize: 40, marginBottom: 4 },
   emptyText: { fontSize: 20, fontWeight: '600', textAlign: 'center' },

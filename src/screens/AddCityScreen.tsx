@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -213,12 +212,7 @@ export function AddCityScreen() {
             disabled={!canAdd}
             style={[styles.addBtn, { backgroundColor: theme.colors.primary }]}>
             {adding ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Icon name="add" size={16} color="#FFF" />
-                <Text style={styles.addBtnText}>Add city</Text>
-              </>
+              <Text style={styles.addBtnText}>Adding…</Text>
             )}
           </PressableScale>
 
