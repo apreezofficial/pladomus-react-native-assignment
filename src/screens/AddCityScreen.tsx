@@ -213,6 +213,11 @@ export function AddCityScreen() {
             style={[styles.addBtn, { backgroundColor: theme.colors.primary }]}>
             {adding ? (
               <Text style={styles.addBtnText}>Adding…</Text>
+            ) : (
+              <>
+                <Icon name="add" size={16} color="#FFF" />
+                <Text style={styles.addBtnText}>Add city</Text>
+              </>
             )}
           </PressableScale>
 
@@ -229,7 +234,7 @@ export function AddCityScreen() {
             disabled={adding || locating}
             style={[styles.locationBtn, { borderColor: theme.colors.border }]}>
             {locating ? (
-              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={[styles.locationBtnText, { color: theme.colors.text }]}>Getting location…</Text>
             ) : (
               <>
                 <Icon name="location" size={16} color={theme.colors.primary} />
