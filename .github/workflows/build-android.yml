@@ -32,9 +32,11 @@ jobs:
         api-level: 33
         target: google_apis
         arch: x86_64
-        
-    - name: Accept Android SDK licenses
-      run: yes | sdkmanager --licenses || true
+
+    - name: Install SDK packages
+      run: |
+        yes | sdkmanager --licenses || true
+        sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmake;3.22.1"
         
     - name: Install dependencies
       run: |
@@ -66,7 +68,7 @@ jobs:
     - name: Build Release APK
       run: |
         cd android
-        ./gradlew assembleRelease --no-daemon
+        ./gradlew assembleRelease --no-daemon --stacktrace
         
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
