@@ -46,7 +46,8 @@ async function requestLocationPermission(): Promise<boolean> {
 export function WeatherDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { city, useCurrentLocation } = route.params;
+  const routeParams = route.params ?? {};
+  const { city, useCurrentLocation } = routeParams;
 
   const { unit, toggleUnit } = useUnit();
   const { weather, loading, error, refresh } = useWeather(null, null);
@@ -69,6 +70,12 @@ export function WeatherDetailScreen() {
   const hasAnimatedIn = useRef(false);
 
   const acquireCoords = useCallback(async () => {
+    if (!city && !useCurrentLocation) {
+      setLocationError('No location selected.');
+      setInitialLoadComplete(true);
+      return;
+    }
+
     if (city) {
       const cityCoords = { lat: city.latitude, lon: city.longitude };
       setCoords(cityCoords);
