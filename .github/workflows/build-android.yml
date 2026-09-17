@@ -52,7 +52,7 @@ jobs:
           echo "License acceptance failed, but continuing because the SDK manager can still install packages." || true
         fi
 
-        "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "cmake;3.22.1" --sdk_root="$ANDROID_HOME"
+        "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" --sdk_root="$ANDROID_HOME"
         
     - name: Install dependencies
       run: |
