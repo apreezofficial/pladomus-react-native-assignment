@@ -1,0 +1,25 @@
+android.sourceSets.main.assets.srcDirs += file("$buildDir/intermediates/ReactNativeVectorIcons")
+
+afterEvaluate {
+    def config = project.hasProperty("vectoricons") ? project.vectoricons : []
+    def iconFontsDir = config.iconFontsDir ?: "../../node_modules/react-native-vector-icons/Fonts"
+    def iconFontNames = config.iconFontNames ?: ["*.ttf"]
+
+    def fontCopyTask = tasks.create(name: "copyReactNativeVectorIconFonts", type: Copy) {
+        description = "copy vector icon fonts"
+        into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
+
+        iconFontNames.each { fontName ->
+            from(iconFontsDir) {
+                include(fontName)
+            }
+        }
+    }
+
+    tasks.configureEach { task ->
+        def taskName = task.name
+        if (taskName.endsWith("Assets") || taskName.endsWith("MergeResources") || taskName.endsWith("MergeAssets")) {
+            task.dependsOn(fontCopyTask)
+        }
+    }
+}

@@ -2,7 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 
 // Add vector icons fonts
-apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+apply from: file("../react-native-vector-icons.gradle")
 
 /**
  * This is the configuration block to customize your React Native Android app.
